@@ -3,20 +3,19 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.colors as mcolors
 
-# ---------------------- 1. 模拟 6 个货币对的真实数据 ----------------------
+# ---------------------- 1. 数据准备 ----------------------
 # 机构列表
 institutions = ["Banks", "CMB", "GB Corporates", "Hedge Funds", "Real Money", "Retail Brokers"]
 # 时间周期
 times = ["lastDay", "lastWeek", "lastMonth"]
-# 5-8 个货币对（示例用 6 个）
+# 货币对
 currencies = ["USD/CNY", "EUR/USD", "GBP/USD", "AUD/USD", "USD/JPY", "USD/HKD"]
 
-# 构造数据
+# 构造数据（这里用示例数据，你可以替换成自己的）
 data = []
 for inst in institutions:
     for t in times:
         for curr in currencies:
-            # 模拟正负交易量（仅示例，可替换为你的真实数据）
             import random
             vol = random.randint(-200, 200)
             data.append([inst, t, curr, vol])
@@ -29,29 +28,34 @@ cmap = mcolors.LinearSegmentedColormap.from_list('custom_rg', colors, N=100)
 vmax = df_long['Volume'].abs().max()
 vmin = -vmax
 
-# ---------------------- 3. 关键布局：2行3列（适配 6 个货币对） ----------------------
-# 计算行数：ceil(货币对数量 / 3)，确保自动适配 5-8 个
+# ---------------------- 3. 关键布局：拉大间距，增加边距 ----------------------
 n_cols = 3
-n_rows = (len(currencies) + n_cols - 1) // n_cols  # 向上取整
+n_rows = (len(currencies) + n_cols - 1) // n_cols  # 自动计算行数
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows), 
-                        gridspec_kw={'wspace': 0.4, 'hspace': 0.5, 'left': 0.2, 'right': 0.85})
+# 核心修改：
+# 1. 增大整体画布尺寸 (figsize)
+# 2. 增大子图间距 (wspace, hspace)
+# 3. 增大左侧边距 (left)，给长名称留出空间
+fig, axes = plt.subplots(
+    n_rows, n_cols,
+    figsize=(18, 5 * n_rows),  # 更宽更高的画布
+    gridspec_kw={
+        'wspace': 0.5,    # 水平间距拉大
+        'hspace': 0.6,    # 垂直间距拉大
+        'left': 0.18,     # 左侧边距增大，防止Y轴文字嵌入
+        'right': 0.85
+    }
+)
 fig.suptitle('Institution × Time × Currency Pair Trading Volume', fontsize=18, y=1.02)
 
-# 扁平化坐标轴（适配单行/多行）
 axes = axes.flatten() if n_rows > 1 else [axes]
 
 # ---------------------- 4. 循环绘制每个货币对的热力图 ----------------------
 for i, curr in enumerate(currencies):
     ax = axes[i]
-    # 筛选当前货币对数据
     subset = df_long[df_long['Currency'] == curr]
-    # 透视：行=机构，列=时间
-    pivot = subset.pivot(index='Institution', columns='Time', values='Volume')
-    # 固定机构顺序，避免乱序
-    pivot = pivot.reindex(institutions)
+    pivot = subset.pivot(index='Institution', columns='Time', values='Volume').reindex(institutions)
     
-    # 绘制热力图
     sns.heatmap(
         pivot,
         annot=True,
@@ -66,23 +70,24 @@ for i, curr in enumerate(currencies):
         linecolor='black'
     )
     
-    # 美化
-    ax.set_title(f"Currency: {curr}", fontsize=14)
+    ax.set_title(f"Currency: {curr}", fontsize=14, pad=15)  # 增加标题与图表的间距
     ax.set_xlabel("")
     ax.set_ylabel("")
-    # 调整Y轴标签，防止嵌入
-    ax.tick_params(axis='y', labelleft=True, pad=10, labelsize=10)
+    
+    # 核心修改：增加Y轴标签的内边距，防止文字嵌入图表
+    ax.tick_params(axis='y', labelleft=True, pad=12, labelsize=10)
     ax.tick_params(axis='x', labelsize=10)
 
-# ---------------------- 5. 隐藏多余的子图（如果货币对数量不是3的倍数） ----------------------
+# ---------------------- 5. 隐藏多余的子图 ----------------------
 for j in range(i+1, len(axes)):
     axes[j].set_visible(False)
 
-# ---------------------- 6. 统一颜色条（右侧） ----------------------
+# ---------------------- 6. 统一颜色条 ----------------------
 cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])
 norm = plt.Normalize(vmin, vmax)
 cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax)
 cb.set_label('Trading Volume', fontsize=12)
 
+# 调整布局，避免裁剪
 plt.tight_layout(rect=[0, 0, 0.85, 0.97])
 plt.show()
