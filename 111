@@ -1,55 +1,38 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-# 1. 准备数据和参数
-n_pairs = 5  # 这里设置为 5 个，改为 3/6/7 代码也能运行
-n_cats = 3
-n_clients = 3
-bar_width = 0.15 # 柱子变窄以容纳多维度
+# --------------------- 你可以直接替换成自己的数据 ---------------------
+banks = ["银行A", "银行B", "银行C", "银行D"]
+customers = ["客户1", "客户2", "客户3"]
+currency_pairs = ["USD/CNY", "EUR/USD", "GBP/USD"]
 
-# 生成模拟数值
-values = np.random.uniform(-2, 2, (n_pairs, n_cats, n_clients))
+# 数据结构：[银行][客户][货币对] = 交易量
+data = {
+    "银行A": [[120, 90, 70], [80, 100, 110], [50, 60, 90]],
+    "银行B": [[200, 150, 100], [130, 140, 160], [70, 80, 120]],
+    "银行C": [[90, 110, 80], [150, 120, 130], [60, 70, 80]],
+    "银行D": [[180, 160, 140], [110, 130, 150], [40, 50, 60]]
+}
 
-# 定义坐标轴位置
-x = np.arange(n_cats) 
+# --------------------- 画图 ---------------------
+width = 0.25
+x = np.arange(len(banks))
+colors = ["#1f77b4", "#ff7f0e", "#2ca02c"]
 
-# 定义颜色池（颜色足够多，适配 7 个以内）
-colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4']
-edge_color = '#ff0000'
+fig, ax = plt.subplots(figsize=(12, 6))
 
-# 2. 创建画布
-fig, ax = plt.subplots(figsize=(14, 8), dpi=100)
+for i, cust in enumerate(customers):
+    for j, curr in enumerate(currency_pairs):
+        values = [data[bank][i][j] for bank in banks]
+        ax.bar(x + (i * len(currency_pairs) + j) * width/3, values, width/3,
+               label=f"{cust}-{curr}" if j == 0 else "", color=colors[j])
 
-# 3. 绘制层级柱子
-for p in range(n_pairs):
-    for c in range(n_clients):
-        # 计算每一组柱子的偏移量
-        offset = (p - (n_pairs - 1) / 2) * bar_width + (c - (n_clients - 1) / 2) * bar_width * 0.5
-        ax.bar(
-            x + offset,
-            values[p, :, c],
-            width=bar_width * 0.45, # 控制每根细柱的宽度
-            label=f'Pair: {p+1}, Client: {c+1}' if p == 0 else "", # 只显示前几个图例避免重叠
-            edgecolor=edge_color,
-            facecolor=colors[p],
-            alpha=0.8,
-            linewidth=0.8
-        )
-
-# 4. 美化图表
-ax.set_xticks(x)
-ax.set_xticklabels(['banks1', 'banks2', 'banks3'])
-ax.set_xlabel('Category', fontsize=12)
-ax.set_ylabel('Value', fontsize=12)
-ax.set_ylim(-2.5, 2.5)
-ax.grid(axis='y', linestyle='--', alpha=0.3)
-ax.axhline(y=0, color='#ff0000', linewidth=1.5)
-
-# 手动添加图例，区分货币对
-from matplotlib.patches import Patch
-legend_elements = [Patch(facecolor=colors[i], edgecolor=edge_color, label=f'Pair {i+1}') for i in range(n_pairs)]
-ax.legend(handles=legend_elements, loc='upper right', title='Currency Pairs')
-
+ax.set_xlabel("银行")
+ax.set_ylabel("交易量")
+ax.set_title("银行-客户-货币对 交易量对比")
+ax.set_xticks(x + width)
+ax.set_xticklabels(banks)
+ax.legend()
 plt.tight_layout()
-plt.savefig("hierarchical_chart.png", dpi=150, bbox_inches="tight")
-print("层级柱状图已保存为 hierarchical_chart.png")
+plt.show()
