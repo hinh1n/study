@@ -1,28 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-# ---------------------- 1. 准备数据 ----------------------
-categories = ['banks1', 'banks2', 'banks3']  # X轴类别
-clients = ['client1', 'client2', 'client3']   # 每个类别下的客户
+# ---------------------- 1. Prepare data ----------------------
+categories = ['banks1', 'banks2', 'banks3']  # X-axis categories
+clients = ['client1', 'client2', 'client3']   # Clients within each category
 
-# 估算的数值（根据原图）
+# Estimated values (based on original chart)
 values = np.array([
     [1.2, -1.3, 2.4],   # banks1: client1, client2, client3
     [-0.6, -1.1, 1.2],  # banks2: client1, client2, client3
     [0.7, 1.4, -1.2]    # banks3: client1, client2, client3
 ])
 
-bar_width = 0.25  # 每个柱形的宽度
-x = np.arange(len(categories))  # X轴位置
+bar_width = 0.25  # Width of each bar
+x = np.arange(len(categories))  # X-axis positions
 
-# ---------------------- 2. 创建画布和轴 ----------------------
+# ---------------------- 2. Create figure and axes ----------------------
 fig, ax = plt.subplots(figsize=(12, 8), dpi=100)
 
-# 定义颜色（边框红色，填充色区分客户）
+# Define colors (red border, different fill colors for clients)
 edge_color = '#ff0000'
-face_colors = ['#ffffff', '#ffffff', '#ffffff']  # 白色填充，红色边框
+face_colors = ['#ff9999', '#99ccff', '#99ff99']  # Different colors for each client
 
-# ---------------------- 3. 绘制柱形 ----------------------
+# ---------------------- 3. Draw bars ----------------------
 for i, client in enumerate(clients):
     ax.bar(
         x + i * bar_width,
@@ -33,11 +33,11 @@ for i, client in enumerate(clients):
         linewidth=1.5
     )
 
-# ---------------------- 4. 添加客户标签（黄色背景） ----------------------
+# ---------------------- 4. Add client labels (yellow background) ----------------------
 for i, cat in enumerate(categories):
     for j, client in enumerate(clients):
         val = values[i, j]
-        # 标签位置：在柱形顶部或底部
+        # Label position: above or below the bar
         y_pos = val + 0.1 if val > 0 else val - 0.3
         ax.text(
             x[i] + j * bar_width,
@@ -49,23 +49,24 @@ for i, cat in enumerate(categories):
             fontsize=10
         )
 
-# ---------------------- 5. 美化图表 ----------------------
-# 设置X轴
+# ---------------------- 5. Beautify the chart ----------------------
+# Set X-axis
 ax.set_xticks(x + bar_width)
 ax.set_xticklabels(categories, fontsize=12)
 ax.set_xlabel('category', fontsize=12, labelpad=15)
 
-# 设置Y轴
+# Set Y-axis
 ax.set_ylabel('value', fontsize=12, labelpad=15)
 ax.set_ylim(-2.5, 2.5)
 ax.set_yticks(np.arange(-2, 3, 1))
 ax.grid(axis='y', linestyle='--', alpha=0.6)
 
-# 绘制零线
+# Draw zero line
 ax.axhline(y=0, color='#ff0000', linewidth=1.5)
 
-# 调整布局
+# Adjust layout
 plt.tight_layout()
 
-# 显示图表
-plt.show()
+# Save as image instead of displaying
+plt.savefig("bar_chart_colored.png", dpi=150, bbox_inches="tight")
+print("Chart saved as bar_chart_colored.png")
