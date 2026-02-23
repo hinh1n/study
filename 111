@@ -27,14 +27,16 @@ df_long['Currency'] = df_long['Time_Currency'].str.split('\n').str[1]
 
 # 创建分面热力图
 g = sns.FacetGrid(df_long, col="Time", col_wrap=3, height=4, aspect=0.8)
-g.map_dataframe(sns.heatmap, 
-                x="Currency", 
-                y="Bank", 
-                values="Volume", 
-                annot=True, 
-                fmt='d', 
-                cmap="Blues",
-                cbar=False)
+
+# 定义一个自定义函数来绘制热力图
+def heatmap_for_facet(data, **kwargs):
+    # 将数据透视成宽格式
+    pivot_data = data.pivot(index='Bank', columns='Currency', values='Volume')
+    # 绘制热力图
+    sns.heatmap(pivot_data, annot=True, fmt='d', cmap="Blues", cbar=False, **kwargs)
+
+# 使用自定义函数绘制每个分面
+g.map_dataframe(heatmap_for_facet)
 
 plt.tight_layout()
 plt.show()
