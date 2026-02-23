@@ -1,58 +1,55 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
-import pandas as pd
 
-# 1. 模拟数据（包含 3-7 个货币对的示例）
-categories = ['banks1', 'banks2', 'banks3']
-clients = ['client1', 'client2', 'client3']
-# 这里模拟 5 个货币对，代码可自动适配 3-7 个
-pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'USD/CAD'] 
+# 1. 准备数据和参数
+n_pairs = 5  # 这里设置为 5 个，改为 3/6/7 代码也能运行
+n_cats = 3
+n_clients = 3
+bar_width = 0.15 # 柱子变窄以容纳多维度
 
-# 生成结构化数据
-data = []
-for pair in pairs:
-    for cat in categories:
-        for client in clients:
-            # 生成随机值，保持正负波动，范围在 -2 到 2 之间
-            val = np.round(np.random.uniform(-2, 2, 1)[0], 1)
-            data.append({'pair': pair, 'category': cat, 'client': client, 'value': val})
+# 生成模拟数值
+values = np.random.uniform(-2, 2, (n_pairs, n_cats, n_clients))
 
-df = pd.DataFrame(data)
+# 定义坐标轴位置
+x = np.arange(n_cats) 
 
-# 2. 绘制分面图 (Facet Grid)
-# col_wrap 控制每行显示多少个图，根据数量自动调整
-# 如果有 7 个，设为 3 或 4 行都很整齐
-g = sns.FacetGrid(df, col="pair", col_wrap=3, height=4, aspect=0.8)
-
-# 定义颜色和样式
-palette = ['#ff9999', '#99ccff', '#99ff99']
+# 定义颜色池（颜色足够多，适配 7 个以内）
+colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4']
 edge_color = '#ff0000'
 
-# 绘制每个子图
-def plot_bars(x, data, **kwargs):
-    bar_width = 0.25
-    x_pos = np.arange(len(x))
-    for i, client in enumerate(clients):
-        client_data = data[data['client'] == client]['value']
-        plt.bar(x_pos + i * bar_width, client_data, width=bar_width, 
-                edgecolor=edge_color, facecolor=palette[i], linewidth=1.5)
-    # 设置 X 轴标签
-    plt.xticks(x_pos + bar_width, x)
+# 2. 创建画布
+fig, ax = plt.subplots(figsize=(14, 8), dpi=100)
 
-# 映射到每个分面
-g.map_dataframe(plot_bars, x='category')
+# 3. 绘制层级柱子
+for p in range(n_pairs):
+    for c in range(n_clients):
+        # 计算每一组柱子的偏移量
+        offset = (p - (n_pairs - 1) / 2) * bar_width + (c - (n_clients - 1) / 2) * bar_width * 0.5
+        ax.bar(
+            x + offset,
+            values[p, :, c],
+            width=bar_width * 0.45, # 控制每根细柱的宽度
+            label=f'Pair: {p+1}, Client: {c+1}' if p == 0 else "", # 只显示前几个图例避免重叠
+            edgecolor=edge_color,
+            facecolor=colors[p],
+            alpha=0.8,
+            linewidth=0.8
+        )
 
-# 美化和标签
-g.set_axis_labels("Category", "Value")
-g.set_titles("{col_name}")
-g.add_legend(title='Client', labels=clients)
+# 4. 美化图表
+ax.set_xticks(x)
+ax.set_xticklabels(['banks1', 'banks2', 'banks3'])
+ax.set_xlabel('Category', fontsize=12)
+ax.set_ylabel('Value', fontsize=12)
+ax.set_ylim(-2.5, 2.5)
+ax.grid(axis='y', linestyle='--', alpha=0.3)
+ax.axhline(y=0, color='#ff0000', linewidth=1.5)
 
-# 调整 Y 轴范围统一
-g.set(ylim=(-2.5, 2.5))
-plt.axhline(y=0, color=edge_color, linewidth=1.5)
+# 手动添加图例，区分货币对
+from matplotlib.patches import Patch
+legend_elements = [Patch(facecolor=colors[i], edgecolor=edge_color, label=f'Pair {i+1}') for i in range(n_pairs)]
+ax.legend(handles=legend_elements, loc='upper right', title='Currency Pairs')
 
-# 保存图片
 plt.tight_layout()
-plt.savefig("facet_chart.png", dpi=150, bbox_inches="tight")
-print("分面图已保存为 facet_chart.png")
+plt.savefig("hierarchical_chart.png", dpi=150, bbox_inches="tight")
+print("层级柱状图已保存为 hierarchical_chart.png")
