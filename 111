@@ -3,52 +3,57 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import matplotlib.colors as mcolors
 
-# ---------------------- 1. 数据准备 ----------------------
-data = [
-    [120, 90, 80, 100, 50, 60],
-    [200, 150, 130, 140, 70, 80],
-    [90, 110, 150, 120, 60, 70],
-    [180, 160, 110, 130, 40, 50],
-    [-150, -100, -50, 0, 50, 100],
-    [-200, -180, -160, -140, -120, -100]
-]
-banks = ["Banks", "ICBC", "HSBC", "Standard Chartered", "Money Brokers", "Brokers"]
-columns = [
-    "lastDay\nUSD/CNY", "lastDay\nEUR/USD",
-    "lastWeek\nUSD/CNY", "lastWeek\nEUR/USD",
-    "lastMonth\nUSD/CNY", "lastMonth\nEUR/USD"
-]
-df = pd.DataFrame(data, index=banks, columns=columns)
+# ---------------------- 1. 模拟 6 个货币对的真实数据 ----------------------
+# 机构列表
+institutions = ["Banks", "CMB", "GB Corporates", "Hedge Funds", "Real Money", "Retail Brokers"]
+# 时间周期
+times = ["lastDay", "lastWeek", "lastMonth"]
+# 5-8 个货币对（示例用 6 个）
+currencies = ["USD/CNY", "EUR/USD", "GBP/USD", "AUD/USD", "USD/JPY", "USD/HKD"]
 
-# 重塑数据
-df_long = df.stack().reset_index()
-df_long.columns = ['Bank', 'Time_Currency', 'Volume']
-df_long['Time'] = df_long['Time_Currency'].str.split('\n').str[0]
-df_long['Currency'] = df_long['Time_Currency'].str.split('\n').str[1]
+# 构造数据
+data = []
+for inst in institutions:
+    for t in times:
+        for curr in currencies:
+            # 模拟正负交易量（仅示例，可替换为你的真实数据）
+            import random
+            vol = random.randint(-200, 200)
+            data.append([inst, t, curr, vol])
 
-# ---------------------- 2. 关键设置：红绿配色 ----------------------
-colors = [(1, 0, 0), (1, 1, 1), (0, 0.6, 0)]  # 红 -> 白 -> 绿
-cmap = mcolors.LinearSegmentedColormap.from_list('custom_red_green', colors, N=100)
-vmax = max(abs(df_long['Volume'].min()), df_long['Volume'].max())
+df_long = pd.DataFrame(data, columns=['Institution', 'Time', 'Currency', 'Volume'])
+
+# ---------------------- 2. 红绿配色设置 ----------------------
+colors = [(1, 0, 0), (1, 1, 1), (0, 0.6, 0)]  # 红->白->绿
+cmap = mcolors.LinearSegmentedColormap.from_list('custom_rg', colors, N=100)
+vmax = df_long['Volume'].abs().max()
 vmin = -vmax
 
-# ---------------------- 3. 绘图设置（核心修复：边距与对齐） ----------------------
-# 调整gridspec_kw，增加左侧边距（left=0.15），给长银行名留出空间
-fig, axes = plt.subplots(1, 3, figsize=(15, 5), 
-                        gridspec_kw={'wspace': 0.3, 'right': 0.85, 'left': 0.15})
-fig.suptitle('Bank × Currency Pair Trading Volume', fontsize=16, y=1.02)
+# ---------------------- 3. 关键布局：2行3列（适配 6 个货币对） ----------------------
+# 计算行数：ceil(货币对数量 / 3)，确保自动适配 5-8 个
+n_cols = 3
+n_rows = (len(currencies) + n_cols - 1) // n_cols  # 向上取整
 
-times = ["lastDay", "lastWeek", "lastMonth"]
-# 固定银行顺序，确保三个图一致
-bank_order = ["Banks", "ICBC", "HSBC", "Standard Chartered", "Money Brokers", "Brokers"]
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4 * n_rows), 
+                        gridspec_kw={'wspace': 0.4, 'hspace': 0.5, 'left': 0.2, 'right': 0.85})
+fig.suptitle('Institution × Time × Currency Pair Trading Volume', fontsize=18, y=1.02)
 
-for ax, time_period in zip(axes, times):
-    subset = df_long[df_long['Time'] == time_period]
-    # 关键：使用reindex确保Y轴顺序固定，不会因数据缺失而乱序
-    pivot_data = subset.pivot(index='Bank', columns='Currency', values='Volume').reindex(bank_order)
+# 扁平化坐标轴（适配单行/多行）
+axes = axes.flatten() if n_rows > 1 else [axes]
+
+# ---------------------- 4. 循环绘制每个货币对的热力图 ----------------------
+for i, curr in enumerate(currencies):
+    ax = axes[i]
+    # 筛选当前货币对数据
+    subset = df_long[df_long['Currency'] == curr]
+    # 透视：行=机构，列=时间
+    pivot = subset.pivot(index='Institution', columns='Time', values='Volume')
+    # 固定机构顺序，避免乱序
+    pivot = pivot.reindex(institutions)
     
+    # 绘制热力图
     sns.heatmap(
-        pivot_data,
+        pivot,
         annot=True,
         fmt='d',
         cmap=cmap,
@@ -60,20 +65,24 @@ for ax, time_period in zip(axes, times):
         linewidths=0.5,
         linecolor='black'
     )
-    ax.set_title(f"Period: {time_period}", fontsize=14)
-    ax.set_xlabel("")
     
-    # 优化Y轴标签显示
+    # 美化
+    ax.set_title(f"Currency: {curr}", fontsize=14)
+    ax.set_xlabel("")
     ax.set_ylabel("")
-    # 确保标签左对齐，不被裁剪
-    ax.tick_params(axis='y', labelleft=True, labelright=False, pad=5)
+    # 调整Y轴标签，防止嵌入
+    ax.tick_params(axis='y', labelleft=True, pad=10, labelsize=10)
+    ax.tick_params(axis='x', labelsize=10)
 
-# ---------------------- 4. 统一颜色条 ----------------------
+# ---------------------- 5. 隐藏多余的子图（如果货币对数量不是3的倍数） ----------------------
+for j in range(i+1, len(axes)):
+    axes[j].set_visible(False)
+
+# ---------------------- 6. 统一颜色条（右侧） ----------------------
 cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])
 norm = plt.Normalize(vmin, vmax)
 cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax)
 cb.set_label('Trading Volume', fontsize=12)
 
-# 最终调整，防止标签超出画布
-plt.tight_layout(rect=[0, 0, 0.85, 0.95]) 
+plt.tight_layout(rect=[0, 0, 0.85, 0.97])
 plt.show()
