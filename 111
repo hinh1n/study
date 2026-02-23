@@ -1,7 +1,7 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
+import matplotlib.colors as mcolors
 
 # ---------------------- 1. 数据准备 ----------------------
 data = [
@@ -26,15 +26,17 @@ df_long.columns = ['Bank', 'Time_Currency', 'Volume']
 df_long['Time'] = df_long['Time_Currency'].str.split('\n').str[0]
 df_long['Currency'] = df_long['Time_Currency'].str.split('\n').str[1]
 
-# ---------------------- 2. 关键设置：统一颜色范围 ----------------------
+# ---------------------- 2. 关键设置：红绿配色（核心修复） ----------------------
+# 定义颜色：红(负) -> 白(0) -> 绿(正)
+colors = [(1, 0, 0), (1, 1, 1), (0, 0.6, 0)]  # (红, 白, 绿)
+n_bins = 100
+cmap = mcolors.LinearSegmentedColormap.from_list('custom_red_green', colors, N=n_bins)
+
+# 统一颜色范围
 vmax = max(abs(df_long['Volume'].min()), df_long['Volume'].max())
 vmin = -vmax
 
-# ---------------------- 3. 绘图设置（修复配色兼容性） ----------------------
-# 修复：改用Seaborn内置的 "vlag" 配色（红-白-蓝），全版本兼容，无需 center 参数
-# 金融常用替代："coolwarm"（蓝-白-红），"RdBu_r"（红-白-蓝）
-cmap = "vlag"
-
+# ---------------------- 3. 绘图 ----------------------
 fig, axes = plt.subplots(1, 3, figsize=(15, 5), gridspec_kw={'wspace': 0.3, 'right': 0.85})
 fig.suptitle('Bank × Currency Pair Trading Volume', fontsize=16, y=1.02)
 
@@ -43,24 +45,24 @@ for ax, time_period in zip(axes, times):
     subset = df_long[df_long['Time'] == time_period]
     pivot_data = subset.pivot(index='Bank', columns='Currency', values='Volume')
     
-    # 绘制热力图：center=0 依然保留，确保0值为白色分界线
     sns.heatmap(
         pivot_data,
         annot=True,
         fmt='d',
-        cmap=cmap,       # 使用兼容配色
-        center=0,        # 0值作为颜色中点（白色）
+        cmap=cmap,       # 使用自定义红绿配色
+        center=0,        # 确保0是白色
         vmin=vmin,
         vmax=vmax,
         cbar=False,
         ax=ax,
-        linewidths=0.5
+        linewidths=0.5,
+        linecolor='black'# 加上黑色边框，区分度更高
     )
     ax.set_title(f"Period: {time_period}", fontsize=14)
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-# ---------------------- 4. 添加统一的颜色条 ----------------------
+# ---------------------- 4. 统一颜色条 ----------------------
 cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])
 norm = plt.Normalize(vmin, vmax)
 cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax)
