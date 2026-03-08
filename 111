@@ -1,33 +1,26 @@
 import pandas as pd
+import plotly.graph_objects as go
 
-# 假设你已加载：last_day, last_week, last_month 三个 DataFrame
+# 模拟数据
+df = pd.DataFrame({
+    'time': pd.date_range('2026-03-06 14:50:00', periods=10, freq='5min'),
+    'bid': [16.74, 16.73, 16.72, 16.70, 16.68, 16.69, 16.70, 16.71, 16.70, 16.69],
+    'ask': [16.75, 16.74, 16.73, 16.71, 16.69, 16.70, 16.71, 16.72, 16.71, 16.70]
+})
 
-# ===================== 1. 自动获取机构列（从 last_day 读取） =====================
-# 排除不需要的列，只保留机构类列
-exclude_cols = ["totalNet", "totalGross", "totalNetUSD"]
-institution_cols = [col for col in last_day.columns if col not in exclude_cols]
+df_index_not_nan = df.dropna(subset=['bid'])
 
-# ===================== 2. 为每个时间维度添加 Time 标签 =====================
-last_day["Time"] = "lastDay"
-last_week["Time"] = "lastWeek"
-last_month["Time"] = "lastMonth"
+data = []
+data.append(go.Scatter(y=df_index_not_nan['bid'], x=df_index_not_nan['time'], mode='lines', name='bid'))
+data.append(go.Scatter(y=df_index_not_nan['ask'], x=df_index_not_nan['time'], mode='lines', name='ask'))
 
-# ===================== 3. 合并三个 DataFrame =====================
-df_combined = pd.concat([last_day, last_week, last_month], ignore_index=True)
-
-# ===================== 4. 重置索引，将货币对转为 Currency 列 =====================
-df_combined = df_combined.reset_index().rename(columns={"index": "Currency"})
-
-# ===================== 5. 宽表转长表（核心 melt 操作） =====================
-df_long = df_combined.melt(
-    id_vars=["Currency", "Time"],       # 保留的维度列
-    value_vars=institution_cols,        # 自动获取的机构列
-    var_name="Institution",            # 机构列名
-    value_name="Volume"                # 数值列名
+layout = go.Layout(
+    xaxis=dict(
+        type='date',  # 必须加！
+        tickformat='%H:%M<br>%b %d, %Y'
+    ),
+    title='Test Chart'
 )
 
-# ===================== 6. 调整列顺序（匹配你截图的结构） =====================
-df_long = df_long[["Institution", "Time", "Currency", "Volume"]]
-
-# 查看结果（和你第二张图结构完全一致）
-print(df_long.head())
+fig = go.Figure(data=data, layout=layout)
+fig.show()  # 这里应该显示正常时间
