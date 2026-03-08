@@ -1,42 +1,28 @@
-import pandas as pd
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
-# 模拟你的数据
-df = pd.DataFrame({
-    'time': pd.date_range('2026-03-06 14:50:00', periods=10, freq='5min'),
-    'bid': [16.74, 16.73, 16.72, 16.70, 16.68, 16.69, 16.70, 16.71, 16.70, 16.69],
-    'ask': [16.75, 16.74, 16.73, 16.71, 16.69, 16.70, 16.71, 16.72, 16.71, 16.69]
-})
+# 1. 读取三张图片
+img1 = mpimg.imread(price_chart_path)       # 派斯查
+img2 = mpimg.imread(interbank_volume_path)  # InterBanVolume
+img3 = mpimg.imread(market_flow_path)       # MarketFlow
 
-# 转成纳秒精度（可选，pandas 默认就是 ns）
-df['time'] = df['time'].dt.as_unit('ns')
+# 2. 创建画布，设置横向排列（1行3列）
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-# 过滤空值
-df_index_not_nan = df.dropna(subset=['bid'])
+# 3. 逐个添加图片和标题
+axes[0].imshow(img1)
+axes[0].set_title('派斯查', fontsize=12)
+axes[0].axis('off')  # 隐藏坐标轴
 
-# 构建图表数据
-data = []
-data.append(go.Scatter(y=df_index_not_nan['bid'], x=df_index_not_nan['time'], mode='lines', name='bid'))
-data.append(go.Scatter(y=df_index_not_nan['ask'], x=df_index_not_nan['time'], mode='lines', name='ask'))
+axes[1].imshow(img2)
+axes[1].set_title('InterBanVolume', fontsize=12)
+axes[1].axis('off')
 
-# 定义布局（显式指定日期格式）
-layout = go.Layout(
-    xaxis=dict(
-        type='date',
-        tickformat='%H:%M<br>%b %d, %Y',  # 确保格式正确
-        title='GMT'
-    ),
-    title='Test Chart'
-)
+axes[2].imshow(img3)
+axes[2].set_title('MarketFlow', fontsize=12)
+axes[2].axis('off')
 
-fig = go.Figure(data=data, layout=layout)
-
-# 👇 关键：再次强制更新 X 轴，确保静态导出生效
-fig.update_xaxes(
-    type='date',
-    tickformat='%H:%M<br>%b %d, %Y',
-    nticks=8  # 控制刻度数量，避免太挤
-)
-
-# 保存图片（用 write_image 直接写，不要 base64）
-fig.write_image('111.png', format='png', scale=2)  # scale=2 提升清晰度
+# 4. 调整布局并保存
+plt.tight_layout()
+plt.savefig('combined_charts.png', dpi=300, bbox_inches='tight')
+plt.show()
