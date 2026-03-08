@@ -1,26 +1,42 @@
 import pandas as pd
 import plotly.graph_objects as go
 
-# 模拟数据
+# 模拟你的数据
 df = pd.DataFrame({
     'time': pd.date_range('2026-03-06 14:50:00', periods=10, freq='5min'),
     'bid': [16.74, 16.73, 16.72, 16.70, 16.68, 16.69, 16.70, 16.71, 16.70, 16.69],
-    'ask': [16.75, 16.74, 16.73, 16.71, 16.69, 16.70, 16.71, 16.72, 16.71, 16.70]
+    'ask': [16.75, 16.74, 16.73, 16.71, 16.69, 16.70, 16.71, 16.72, 16.71, 16.69]
 })
 
+# 转成纳秒精度（可选，pandas 默认就是 ns）
+df['time'] = df['time'].dt.as_unit('ns')
+
+# 过滤空值
 df_index_not_nan = df.dropna(subset=['bid'])
 
+# 构建图表数据
 data = []
 data.append(go.Scatter(y=df_index_not_nan['bid'], x=df_index_not_nan['time'], mode='lines', name='bid'))
 data.append(go.Scatter(y=df_index_not_nan['ask'], x=df_index_not_nan['time'], mode='lines', name='ask'))
 
+# 定义布局（显式指定日期格式）
 layout = go.Layout(
     xaxis=dict(
-        type='date',  # 必须加！
-        tickformat='%H:%M<br>%b %d, %Y'
+        type='date',
+        tickformat='%H:%M<br>%b %d, %Y',  # 确保格式正确
+        title='GMT'
     ),
     title='Test Chart'
 )
 
 fig = go.Figure(data=data, layout=layout)
-fig.show()  # 这里应该显示正常时间
+
+# 👇 关键：再次强制更新 X 轴，确保静态导出生效
+fig.update_xaxes(
+    type='date',
+    tickformat='%H:%M<br>%b %d, %Y',
+    nticks=8  # 控制刻度数量，避免太挤
+)
+
+# 保存图片（用 write_image 直接写，不要 base64）
+fig.write_image('111.png', format='png', scale=2)  # scale=2 提升清晰度
