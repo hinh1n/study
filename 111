@@ -1,93 +1,33 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
 import pandas as pd
-import matplotlib.colors as mcolors
 
-# ---------------------- 1. 数据准备 ----------------------
-# 机构列表
-institutions = ["Banks", "CMB", "GB Corporates", "Hedge Funds", "Real Money", "Retail Brokers"]
-# 时间周期
-times = ["lastDay", "lastWeek", "lastMonth"]
-# 货币对
-currencies = ["USD/CNY", "EUR/USD", "GBP/USD", "AUD/USD", "USD/JPY", "USD/HKD"]
+# 假设你已加载：last_day, last_week, last_month 三个 DataFrame
 
-# 构造数据（这里用示例数据，你可以替换成自己的）
-data = []
-for inst in institutions:
-    for t in times:
-        for curr in currencies:
-            import random
-            vol = random.randint(-200, 200)
-            data.append([inst, t, curr, vol])
+# ===================== 1. 自动获取机构列（从 last_day 读取） =====================
+# 排除不需要的列，只保留机构类列
+exclude_cols = ["totalNet", "totalGross", "totalNetUSD"]
+institution_cols = [col for col in last_day.columns if col not in exclude_cols]
 
-df_long = pd.DataFrame(data, columns=['Institution', 'Time', 'Currency', 'Volume'])
+# ===================== 2. 为每个时间维度添加 Time 标签 =====================
+last_day["Time"] = "lastDay"
+last_week["Time"] = "lastWeek"
+last_month["Time"] = "lastMonth"
 
-# ---------------------- 2. 红绿配色设置 ----------------------
-colors = [(1, 0, 0), (1, 1, 1), (0, 0.6, 0)]  # 红->白->绿
-cmap = mcolors.LinearSegmentedColormap.from_list('custom_rg', colors, N=100)
-vmax = df_long['Volume'].abs().max()
-vmin = -vmax
+# ===================== 3. 合并三个 DataFrame =====================
+df_combined = pd.concat([last_day, last_week, last_month], ignore_index=True)
 
-# ---------------------- 3. 关键布局：拉大间距，增加边距 ----------------------
-n_cols = 3
-n_rows = (len(currencies) + n_cols - 1) // n_cols  # 自动计算行数
+# ===================== 4. 重置索引，将货币对转为 Currency 列 =====================
+df_combined = df_combined.reset_index().rename(columns={"index": "Currency"})
 
-# 核心修改：
-# 1. 增大整体画布尺寸 (figsize)
-# 2. 增大子图间距 (wspace, hspace)
-# 3. 增大左侧边距 (left)，给长名称留出空间
-fig, axes = plt.subplots(
-    n_rows, n_cols,
-    figsize=(18, 5 * n_rows),  # 更宽更高的画布
-    gridspec_kw={
-        'wspace': 0.5,    # 水平间距拉大
-        'hspace': 0.6,    # 垂直间距拉大
-        'left': 0.18,     # 左侧边距增大，防止Y轴文字嵌入
-        'right': 0.85
-    }
+# ===================== 5. 宽表转长表（核心 melt 操作） =====================
+df_long = df_combined.melt(
+    id_vars=["Currency", "Time"],       # 保留的维度列
+    value_vars=institution_cols,        # 自动获取的机构列
+    var_name="Institution",            # 机构列名
+    value_name="Volume"                # 数值列名
 )
-fig.suptitle('Institution × Time × Currency Pair Trading Volume', fontsize=18, y=1.02)
 
-axes = axes.flatten() if n_rows > 1 else [axes]
+# ===================== 6. 调整列顺序（匹配你截图的结构） =====================
+df_long = df_long[["Institution", "Time", "Currency", "Volume"]]
 
-# ---------------------- 4. 循环绘制每个货币对的热力图 ----------------------
-for i, curr in enumerate(currencies):
-    ax = axes[i]
-    subset = df_long[df_long['Currency'] == curr]
-    pivot = subset.pivot(index='Institution', columns='Time', values='Volume').reindex(institutions)
-    
-    sns.heatmap(
-        pivot,
-        annot=True,
-        fmt='d',
-        cmap=cmap,
-        center=0,
-        vmin=vmin,
-        vmax=vmax,
-        cbar=False,
-        ax=ax,
-        linewidths=0.5,
-        linecolor='black'
-    )
-    
-    ax.set_title(f"Currency: {curr}", fontsize=14, pad=15)  # 增加标题与图表的间距
-    ax.set_xlabel("")
-    ax.set_ylabel("")
-    
-    # 核心修改：增加Y轴标签的内边距，防止文字嵌入图表
-    ax.tick_params(axis='y', labelleft=True, pad=12, labelsize=10)
-    ax.tick_params(axis='x', labelsize=10)
-
-# ---------------------- 5. 隐藏多余的子图 ----------------------
-for j in range(i+1, len(axes)):
-    axes[j].set_visible(False)
-
-# ---------------------- 6. 统一颜色条 ----------------------
-cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])
-norm = plt.Normalize(vmin, vmax)
-cb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap), cax=cbar_ax)
-cb.set_label('Trading Volume', fontsize=12)
-
-# 调整布局，避免裁剪
-plt.tight_layout(rect=[0, 0, 0.85, 0.97])
-plt.show()
+# 查看结果（和你第二张图结构完全一致）
+print(df_long.head())
