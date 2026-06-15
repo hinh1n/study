@@ -1,0 +1,815 @@
+# Support Knowledge Assistant 部门内部 AI Agent 知识库系统需求文档
+
+## 1. 项目背景
+
+我在一家外汇公司 Support 部门工作。日常工作中会遇到大量客户或内部同事提出的问题，例如订单为什么会被拒绝、客户为什么没有交易权限、账户状态异常、平台操作失败、出入金问题、KYC 问题、后台系统问题等。
+
+目前这些问题的处理经验主要依赖个人笔记、聊天记录、截图、历史案例和人工记忆。随着案例越来越多，Support 同事在查询、理解和复用历史笔记时会花费大量时间，也容易出现重复排查、遗漏信息、答案不统一等问题。
+
+因此希望开发一个部门内部使用的 AI Agent 知识库系统。系统可以让团队成员上传自己的案例笔记、处理经验、截图和长文本资料，自动整理成内部知识库。之后用户可以通过前端页面向 AI 提问，AI 会基于知识库检索相关内容，归纳总结后给出答案、排查建议和参考来源。
+
+本项目需要使用 Python 实现，并使用 MongoDB 作为数据库。部门可以连接 ChatGPT / OpenAI API。
+
+
+## 2. 项目目标
+
+本项目目标是构建一个 Support 部门内部的 AI 知识库助手，用于提升问题查询、案例复用和经验沉淀效率。
+
+核心目标包括：
+
+1. 支持团队成员上传笔记、文档和图片，持续更新内部知识库。
+2. 支持长文本笔记的自动分段、向量化和检索。
+3. 支持用户通过聊天页面向 AI 提问。
+4. AI 根据知识库内容检索相关案例，再生成总结性回答。
+5. 回答中需要包含可能原因、排查步骤、建议处理方式和参考来源。
+6. 支持知识库内容管理，包括查看、搜索、编辑、删除、重新索引。
+7. 后续可扩展用户权限、审核流程、反馈机制、OCR、数据脱敏和数据分析。
+
+
+## 3. 目标用户
+
+主要用户：
+
+1. Support 部门同事
+   用于查询历史案例、上传笔记、快速获得处理建议。
+
+2. Support Team Lead / Manager
+   用于维护知识库、审核内容、分析高频问题、统一团队处理标准。
+
+3. 内部相关部门用户
+   例如 Dealer、Compliance、Back Office、IT Support 等，可根据权限查询相关知识。
+
+
+## 4. 核心使用场景
+
+### 场景 1：查询订单拒绝原因
+
+用户在聊天页面输入：
+
+“为什么客户的订单会被拒绝？”
+
+AI 需要从知识库中检索相关笔记，例如订单拒绝、交易权限、市场关闭、保证金不足、价格偏离、风控限制等内容，然后返回：
+
+1. 可能原因
+2. 排查步骤
+3. 需要查看哪些后台字段
+4. 建议回复客户的话术
+5. 相关历史案例来源
+
+
+### 场景 2：查询客户没有权限的原因
+
+用户输入：
+
+“客户为什么没有权限交易某个产品？”
+
+AI 需要检索权限、账户组、产品配置、KYC 状态、地区限制、账户状态等相关知识，并返回可执行的检查清单。
+
+
+### 场景 3：上传今日案例笔记
+
+Support 同事处理完一个新案例后，将笔记上传到系统。
+
+笔记可能是：
+
+1. 直接输入的文本
+2. TXT / Markdown 文件
+3. Word 文档
+4. PDF 文件
+5. 图片截图
+
+系统需要提取内容，进行清洗、分段、生成 embedding，并保存到 MongoDB 知识库中。
+
+
+### 场景 4：上传图片截图
+
+用户上传一张截图，例如后台报错、订单日志、聊天记录截图。
+
+系统需要使用 OCR 识别图片中的文字，将识别结果作为知识内容保存。图片原文件也需要保留，方便后续查看来源。
+
+
+### 场景 5：知识库维护
+
+管理员可以查看所有上传内容，搜索某条笔记，修改标签，删除错误内容，或者将过期内容标记为 inactive。
+
+
+## 5. 功能模块
+
+### 5.1 用户登录与权限模块
+
+第一阶段可以先做简单登录，后续再接入公司内部账号系统。
+
+用户角色建议：
+
+1. 普通用户
+   - 可以使用 AI 问答
+   - 可以上传笔记
+   - 可以查看自己上传的笔记
+
+2. 管理员
+   - 可以查看所有笔记
+   - 可以编辑、删除、停用笔记
+   - 可以重新生成 embedding
+   - 可以管理标签和分类
+
+3. 审核员，后续扩展
+   - 可以审核新上传的知识
+   - 可以标记内容是否准确、是否过期
+
+
+### 5.2 AI 聊天问答模块
+
+前端需要提供一个聊天页面，用户可以输入问题，AI 返回答案。
+
+聊天页面功能：
+
+1. 输入问题
+2. 显示 AI 回答
+3. 显示参考来源
+4. 支持继续追问
+5. 支持复制回答
+6. 支持对回答反馈：有用 / 没用
+7. 支持查看引用的原始笔记内容
+
+AI 回答必须基于知识库检索结果生成，不允许脱离知识库随意编造。
+
+回答格式建议：
+
+结论：
+简要说明最可能的原因。
+
+可能原因：
+1. 原因 A
+2. 原因 B
+3. 原因 C
+
+排查步骤：
+1. 检查账户状态
+2. 检查产品权限
+3. 检查订单日志
+4. 检查后台配置
+
+建议处理方式：
+说明 Support 应该怎么处理。
+
+可回复客户的话术：
+提供一段专业、简洁、合规的回复模板。
+
+参考来源：
+列出使用到的知识库笔记标题、上传人、更新时间。
+
+置信度：
+高 / 中 / 低
+
+注意事项：
+如果涉及交易、资金、合规、权限变更，需要人工复核。
+
+
+### 5.3 知识上传模块
+
+需要提供一个上传页面，让用户可以上传新的知识内容。
+
+支持上传类型：
+
+1. 直接输入文本
+2. TXT
+3. Markdown
+4. Word docx
+5. PDF
+6. 图片 png / jpg / jpeg
+
+上传表单字段：
+
+1. 标题
+2. 内容文本，直接输入时使用
+3. 文件上传
+4. 问题分类，例如：
+   - 订单拒绝
+   - 交易权限
+   - 账户状态
+   - 出入金
+   - KYC
+   - 平台问题
+   - 后台系统
+   - 其他
+5. 产品或系统标签，例如：
+   - MT4
+   - MT5
+   - CRM
+   - Client Portal
+   - Back Office
+   - Payment
+6. 关键词
+7. 案例日期
+8. 是否需要管理员审核
+9. 上传人
+10. 备注
+
+上传处理流程：
+
+1. 接收用户上传内容
+2. 判断内容类型
+3. 如果是文档，提取文本
+4. 如果是图片，进行 OCR 识别
+5. 保存原始文件
+6. 清洗文本
+7. 将长文本切分成多个 chunk
+8. 为每个 chunk 生成 embedding
+9. 保存原始文档信息到 documents collection
+10. 保存分段文本和 embedding 到 chunks collection
+11. 返回上传成功结果
+
+
+### 5.4 知识库管理模块
+
+管理员页面需要支持：
+
+1. 查看知识列表
+2. 按标题搜索
+3. 按问题分类筛选
+4. 按标签筛选
+5. 按上传人筛选
+6. 按日期筛选
+7. 查看原始内容
+8. 查看分段 chunk 内容
+9. 编辑标题、分类、标签、备注
+10. 删除知识
+11. 停用知识
+12. 重新生成 embedding
+13. 标记内容为已审核 / 待审核
+14. 标记内容为有效 / 过期
+
+普通用户可以查看自己上传的内容，但不能删除他人内容。
+
+
+### 5.5 知识检索与 RAG 模块
+
+系统需要实现 RAG，也就是 Retrieval Augmented Generation。
+
+用户提问时流程如下：
+
+1. 接收用户问题
+2. 对用户问题生成 embedding
+3. 在 MongoDB 中进行向量检索，找到最相关的 chunks
+4. 可结合关键词、标签、问题分类做混合检索
+5. 获取 top_k 个相关 chunk，例如 5-10 个
+6. 将检索结果与用户问题一起发送给 ChatGPT
+7. ChatGPT 基于检索结果生成回答
+8. 返回答案、参考来源和置信度
+9. 保存聊天记录
+
+检索策略建议：
+
+1. 优先使用 MongoDB Atlas Vector Search。
+2. 如果当前 MongoDB 不支持向量检索，可以先实现文本搜索，后续再升级。
+3. 推荐使用 hybrid search，即向量相似度 + 关键词搜索 + metadata filter。
+4. 检索结果必须带来源信息，方便 AI 引用。
+
+
+## 6. 长文本分段设计
+
+笔记可能很长，一个问题可能包含完整邮件、聊天记录、后台日志、处理流程和最终解决方案。
+
+不能把整篇笔记直接作为一个知识点存储，否则检索不准确，也容易超过 AI 上下文限制。
+
+分段规则建议：
+
+1. 每个 chunk 控制在 500-1000 tokens。
+2. 相邻 chunk 保留 100-150 tokens overlap，避免上下文断裂。
+3. 尽量按自然段、标题、列表、问答结构切分。
+4. 每个 chunk 保存：
+   - document_id
+   - chunk_index
+   - chunk_text
+   - embedding
+   - title
+   - tags
+   - category
+   - source_file
+   - created_at
+   - created_by
+
+分段时需要保留原始文档和 chunk 的关联关系。
+
+
+## 7. 图片 OCR 设计
+
+如果用户上传图片，系统需要：
+
+1. 保存原始图片文件。
+2. 使用 OCR 识别图片文字。
+3. 将 OCR 文本作为可检索内容。
+4. 保存 OCR 结果。
+5. 如果 OCR 结果为空，需要提示用户手动补充说明。
+
+可选 OCR 方案：
+
+1. pytesseract
+2. EasyOCR
+3. PaddleOCR
+4. 云 OCR 服务，视公司安全政策决定
+
+第一阶段可以先使用 pytesseract 或 EasyOCR。
+
+
+## 8. 数据库设计
+
+数据库使用 MongoDB。
+
+### 8.1 users collection
+
+{
+  "_id": "ObjectId",
+  "username": "string",
+  "display_name": "string",
+  "email": "string",
+  "role": "user/admin/reviewer",
+  "department": "Support",
+  "created_at": "datetime",
+  "updated_at": "datetime",
+  "is_active": true
+}
+
+
+### 8.2 documents collection
+
+{
+  "_id": "ObjectId",
+  "title": "string",
+  "original_text": "string",
+  "summary": "string",
+  "file_type": "text/txt/md/docx/pdf/image",
+  "file_path": "string",
+  "ocr_text": "string",
+  "category": "order_rejection/trading_permission/account_status/deposit_withdrawal/kyc/platform/backoffice/other",
+  "tags": ["MT4", "MT5", "CRM"],
+  "keywords": ["string"],
+  "case_date": "date",
+  "created_by": "user_id",
+  "created_at": "datetime",
+  "updated_at": "datetime",
+  "status": "active/inactive/expired",
+  "review_status": "pending/approved/rejected",
+  "notes": "string"
+}
+
+
+### 8.3 chunks collection
+
+{
+  "_id": "ObjectId",
+  "document_id": "ObjectId",
+  "chunk_index": 0,
+  "chunk_text": "string",
+  "embedding": [0.01, 0.02, 0.03],
+  "title": "string",
+  "category": "string",
+  "tags": ["string"],
+  "keywords": ["string"],
+  "created_by": "user_id",
+  "created_at": "datetime",
+  "status": "active",
+  "review_status": "approved"
+}
+
+
+### 8.4 chat_sessions collection
+
+{
+  "_id": "ObjectId",
+  "user_id": "ObjectId",
+  "title": "string",
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+
+
+### 8.5 chat_messages collection
+
+{
+  "_id": "ObjectId",
+  "session_id": "ObjectId",
+  "user_id": "ObjectId",
+  "role": "user/assistant",
+  "content": "string",
+  "retrieved_chunks": ["chunk_id"],
+  "sources": [
+    {
+      "document_id": "ObjectId",
+      "chunk_id": "ObjectId",
+      "title": "string",
+      "score": 0.89
+    }
+  ],
+  "feedback": "helpful/not_helpful/null",
+  "created_at": "datetime"
+}
+
+
+## 9. 后端技术要求
+
+后端使用 Python。
+
+推荐技术栈：
+
+1. FastAPI：提供 API 服务
+2. Uvicorn：运行服务
+3. MongoDB / Motor：异步 MongoDB 连接
+4. OpenAI Python SDK：调用 ChatGPT 和 Embedding
+5. Pydantic：数据校验
+6. python-docx：解析 Word
+7. PyMuPDF 或 pdfplumber：解析 PDF
+8. pytesseract / EasyOCR：图片 OCR
+9. LangChain 或 LlamaIndex：可选，用于 RAG 流程
+10. 自定义 chunking 逻辑：建议先自己实现，避免过度依赖框架
+
+建议后端目录结构：
+
+backend/
+  app/
+    main.py
+    config.py
+    database.py
+    models/
+      user.py
+      document.py
+      chunk.py
+      chat.py
+    schemas/
+      document.py
+      chat.py
+      user.py
+    routers/
+      auth.py
+      documents.py
+      chat.py
+      admin.py
+    services/
+      openai_service.py
+      embedding_service.py
+      retrieval_service.py
+      rag_service.py
+      document_parser.py
+      ocr_service.py
+      chunking_service.py
+    utils/
+      text_cleaner.py
+      file_storage.py
+  requirements.txt
+  .env.example
+
+
+## 10. 前端技术要求
+
+前端可以使用：
+
+1. React
+2. 或者简单 HTML + JavaScript
+3. 或者 FastAPI Jinja2 模板
+
+如果希望快速开发，推荐 React。
+
+前端页面包括：
+
+1. 登录页面
+2. AI 聊天页面
+3. 上传知识页面
+4. 知识库列表页面
+5. 知识详情页面
+6. 管理员管理页面
+
+聊天页面要求：
+
+1. 左侧可显示历史会话
+2. 中间为对话区
+3. 底部输入框
+4. AI 回答下方显示来源
+5. 支持点击来源查看原始笔记
+6. 支持复制回答
+7. 支持反馈有用 / 没用
+
+上传页面要求：
+
+1. 支持拖拽上传
+2. 支持填写标题、分类、标签、关键词
+3. 支持上传后显示处理状态
+4. 上传成功后显示生成了多少个 chunk
+
+知识库页面要求：
+
+1. 表格展示文档
+2. 支持搜索和筛选
+3. 支持查看详情
+4. 支持编辑 metadata
+5. 支持停用 / 删除 / 重新索引
+
+
+## 11. API 设计
+
+### 11.1 上传知识
+
+POST /api/documents/upload
+
+请求类型：multipart/form-data
+
+字段：
+
+title
+content
+file
+category
+tags
+keywords
+case_date
+notes
+
+返回：
+
+{
+  "success": true,
+  "document_id": "xxx",
+  "chunks_created": 8,
+  "message": "Document uploaded and indexed successfully"
+}
+
+
+### 11.2 获取知识列表
+
+GET /api/documents
+
+支持参数：
+
+keyword
+category
+tags
+created_by
+status
+review_status
+page
+page_size
+
+
+### 11.3 获取知识详情
+
+GET /api/documents/{document_id}
+
+
+### 11.4 更新知识 metadata
+
+PATCH /api/documents/{document_id}
+
+
+### 11.5 删除知识
+
+DELETE /api/documents/{document_id}
+
+
+### 11.6 重新索引知识
+
+POST /api/documents/{document_id}/reindex
+
+
+### 11.7 AI 问答
+
+POST /api/chat
+
+请求：
+
+{
+  "session_id": "optional",
+  "message": "Why was this order rejected?",
+  "filters": {
+    "category": "order_rejection",
+    "tags": ["MT5"]
+  }
+}
+
+返回：
+
+{
+  "answer": "string",
+  "session_id": "xxx",
+  "sources": [
+    {
+      "document_id": "xxx",
+      "chunk_id": "xxx",
+      "title": "Order rejected due to market closed",
+      "score": 0.91
+    }
+  ],
+  "confidence": "high"
+}
+
+
+### 11.8 提交反馈
+
+POST /api/chat/messages/{message_id}/feedback
+
+请求：
+
+{
+  "feedback": "helpful"
+}
+
+
+## 12. AI Prompt 规则
+
+系统 Prompt 建议：
+
+你是外汇公司内部 Support 部门的知识库助手。
+
+你必须只基于提供的知识库上下文回答用户问题。
+
+规则：
+1. 不要编造知识库中没有的信息。
+2. 如果上下文不足，请明确说明需要更多信息。
+3. 涉及交易、账户权限、资金、KYC、合规问题时，需要提醒用户通过内部系统或相关负责团队复核。
+4. 回答需要包含可执行的排查步骤。
+5. 如果适合，请提供可能原因。
+6. 如果适合，请提供可回复客户的话术。
+7. 必须列出参考来源。
+8. 回答要专业、简洁，适合 Support 团队使用。
+
+回答格式：
+- 结论
+- 可能原因
+- 排查步骤
+- 建议处理方式
+- 可回复客户的话术
+- 参考来源
+- 置信度
+- 注意事项
+
+
+## 13. 安全与合规要求
+
+由于本项目用于外汇公司内部 Support 工作，可能涉及客户信息、交易信息、账户状态、资金问题和合规信息，因此需要注意安全。
+
+要求：
+
+1. 不要将客户敏感信息展示给无权限用户。
+2. 上传内容中如包含客户姓名、账号、邮箱、手机号、证件号等，需要考虑脱敏。
+3. AI 回答不得替代最终合规判断。
+4. 涉及资金、交易、权限变更的问题，需要人工复核。
+5. 系统需要记录用户上传和查询行为。
+6. 管理员可以删除错误或过期内容。
+7. 不要把 OpenAI API Key 写死在代码里，必须使用环境变量。
+8. 文件上传需要限制类型和大小。
+9. 需要防止恶意文件上传。
+10. 后续可以增加 SSO 或公司内部登录系统。
+
+
+## 14. 环境变量
+
+需要提供 .env.example：
+
+APP_NAME=Support Knowledge Assistant
+ENV=development
+
+MONGODB_URI=mongodb://localhost:27017
+MONGODB_DB_NAME=support_ai_knowledge
+
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_CHAT_MODEL=gpt-4.1-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+UPLOAD_DIR=uploads
+MAX_UPLOAD_SIZE_MB=20
+
+JWT_SECRET_KEY=change_me
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+
+## 15. 非功能性要求
+
+1. 系统需要易于部署。
+2. 后端代码需要模块化，方便维护。
+3. API 需要有清晰的错误返回。
+4. 上传和索引过程需要有状态提示。
+5. AI 回答需要尽量快，普通问题目标响应时间 5-15 秒。
+6. 数据库结构需要方便后续扩展。
+7. 支持未来增加多语言内容，至少支持中文和英文。
+8. 前端页面需要简洁、清晰，适合办公场景。
+9. 系统需要保存日志，便于排查错误。
+10. 需要有 README，说明如何启动项目。
+
+
+## 16. 第一阶段 MVP 范围
+
+第一阶段优先实现以下功能：
+
+1. FastAPI 后端
+2. MongoDB 数据存储
+3. OpenAI Chat + Embedding 调用
+4. 文本笔记上传
+5. 长文本 chunk 分段
+6. embedding 存储
+7. 简单向量检索或文本检索
+8. AI 聊天问答页面
+9. 回答中显示引用来源
+10. 简单知识列表页面
+
+第一阶段可以暂时不做：
+
+1. 复杂权限系统
+2. 审核流程
+3. 图片 OCR
+4. Word / PDF 解析
+5. 高级数据分析
+6. SSO 登录
+
+但代码结构需要预留这些能力。
+
+
+## 17. 第二阶段增强功能
+
+第二阶段实现：
+
+1. PDF 解析
+2. Word 解析
+3. 图片 OCR
+4. 知识库编辑和删除
+5. 知识重新索引
+6. 用户角色权限
+7. 回答反馈
+8. 混合检索
+9. 上传内容审核
+10. 数据脱敏
+
+
+## 18. 第三阶段高级功能
+
+第三阶段实现：
+
+1. 接入公司内部 SSO
+2. 自动识别高频问题
+3. 自动生成 FAQ
+4. 自动生成培训资料
+5. 支持多部门知识库
+6. 支持知识有效期提醒
+7. 支持管理员审核工作流
+8. 支持按业务线隔离知识
+9. 支持导出问答报告
+10. 支持 AI 评估知识库缺口
+
+
+## 19. 推荐开发顺序
+
+建议按以下顺序开发：
+
+1. 搭建 FastAPI 项目结构
+2. 连接 MongoDB
+3. 封装 OpenAI Chat 和 Embedding 服务
+4. 实现文本清洗和 chunking
+5. 实现文档上传 API
+6. 实现 documents 和 chunks collection
+7. 实现检索服务
+8. 实现 RAG 问答服务
+9. 实现聊天 API
+10. 实现简单前端聊天页面
+11. 实现上传页面
+12. 实现知识库列表页面
+13. 增加来源引用
+14. 增加日志和错误处理
+15. 编写 README 和启动说明
+
+
+## 20. 验收标准
+
+MVP 验收标准：
+
+1. 用户可以打开前端页面。
+2. 用户可以上传一段文本笔记。
+3. 系统可以将长文本自动切分成多个 chunk。
+4. 系统可以调用 OpenAI embedding API。
+5. 系统可以把文档、chunk 和 embedding 存入 MongoDB。
+6. 用户可以在聊天页面提问。
+7. 系统可以检索相关知识库内容。
+8. AI 可以基于检索结果回答问题。
+9. AI 回答中显示参考来源。
+10. 如果知识库没有相关内容，AI 不应编造答案，而应提示缺少信息。
+11. 系统可以查看已上传知识列表。
+12. 项目有 README，能说明如何配置环境变量和启动服务。
+
+
+## 21. 项目名称建议
+
+可以使用以下名称之一：
+
+1. Support Knowledge Assistant
+2. Support AI Copilot
+3. FX Support Knowledge Agent
+4. Internal Support Case Assistant
+5. Support RAG Assistant
+
+推荐名称：
+
+Support Knowledge Assistant
+
+
+## 22. 总结
+
+本项目是一个面向外汇公司 Support 部门的内部 AI 知识库助手。它通过上传笔记、文档和图片，将团队经验沉淀为可检索知识库。用户提问时，系统通过 RAG 流程检索相关知识，并让 AI 生成结构化答案、排查建议和客户回复模板。
+
+第一阶段应优先完成文本知识上传、分段、embedding、MongoDB 存储、知识检索和 AI 问答。后续再逐步扩展 OCR、文档解析、权限管理、审核流程和数据分析能力。
