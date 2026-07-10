@@ -1,1 +1,3 @@
-由于你改的代码都没有生效，我改了那一行之后还是没有高亮。你能不能加一些 log，把那些 log 保存成 log 日志，然后你再根据 log 的具体情况来进行 debug
+InfoDir-CN-FXKDB_PROD_RATES_PRICINGDATA_READONLY
+InfoDir-CN-FXKDB_PROD_RATES_MARKETDATA_READONLY
+InfoDir-CN-FXKDB_PROD_RATES_TRADEDATA_READONLY
