@@ -1,9 +1,7 @@
-# 1. 删除旧的虚拟环境（再次确认干净）
 rm -rf .venv
+uv venv .venv \
+  --python /usr/bin/python3.12 \
+  --system-site-packages=false
 
-# 2. 创建虚拟环境，明确指定使用系统 Python，但隔离在 .venv 中
-uv venv .venv --python /usr/bin/python3.12
-
-# 3. 关键步骤：在 sync 时，强制使用项目内的 Python，禁止它去碰系统目录
-# 这里使用 --python 参数指定虚拟环境里的 Python
-uv sync --python .venv/bin/python
+uv sync
+uv run main.py
