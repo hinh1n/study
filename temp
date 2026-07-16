@@ -1,7 +1,1 @@
-rm -rf .venv
-uv venv .venv \
-  --python /usr/bin/python3.12 \
-  --system-site-packages=false
-
-uv sync
-uv run main.py
+只对上面这两个文件进行修改，参考叉叉叉这个文件，去获取 HK 的 UTI，对 KDPQ 那个文件的 From book position update，的 RDPHDP 都排除 HK 的 UTI，就是我不要数据里面包含这些 UTI，你要考虑 UTI 为空和不空的情况，UTI 为一个和多个的情况，根据情况去修改 KDPQ，不要改我 KDPQ 的逻辑，只要加上排除 UTI 的逻辑就行
