@@ -1,1 +1,1 @@
-只对上面这两个文件进行修改，参考叉叉叉这个文件，去获取 HK 的 UTI，对 KDPQ 那个文件的 From book position update，的 RDPHDP 都排除 HK 的 UTI，就是我不要数据里面包含这些 UTI，你要考虑 UTI 为空和不空的情况，UTI 为一个和多个的情况，根据情况去修改 KDPQ，不要改我 KDPQ 的逻辑，只要加上排除 UTI 的逻辑就行
+这个 gojira csv 文件是我这一年所工作的内容，帮我总结一下我今年的工作，Restart 这些可以不用理会，分成两类吧 一个是 support 类，一个是写代码类的，只用提取 2026 年的，写代码类的，我觉得比较大的事情是创建了一个 erisk report service是一个完整的项目。对 esale 的帮助很大，他们也可以自己开发 report，KDB 数据库开发的方面 也自己尝试去创建Make share 的 dr vm以及做了很多各种类型的工作，你先帮我总结一下吧 英文
